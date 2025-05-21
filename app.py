@@ -1,32 +1,42 @@
-from fastapi import FastAPI,HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
-import pandas as pd
+import uvicorn
 
-model=joblib.load('loan_status_predictor.pkl')
-app=FastAPI()
-num_cols=['ApplicantIncome','CoapplicantIncome','LoanAmount','Loan_Amount_Term']
-scaler=joblib.load('vector.pkl')
+class LoanRequest(BaseModel):
+    Gender: int
+    Married: int
+    Dependents: int
+    Education: int
+    Self_Employed: int
+    ApplicantIncome: int
+    CoapplicantIncome: int
+    LoanAmount: int
+    Loan_Amount_Term: int
+    Credit_History: int
+    Property_Area: int
 
-class LoanApproval(BaseModel):
-    Gender:float
-    Marriage:float
-    Gender:float
-    Dependents:float
-    Self_Employed:float
-    ApplicantIncome:float
-    CoapplicantIncome:float
-    LoanAmount:float
-    Loan_Amount_Term:float
-    Credit_History:float
-    Property_Area:float
+app = FastAPI()
 
+model = joblib.load("loan_model.pkl")  
 @app.post("/predict")
-async def predict_loan_status(application:LoanApproval):
-    input_data = pd.DataFrame([application.dict()])
-    input_data[num_cols]=scaler.transform(input_data[num_cols])
-    result=model.predict(input_data)
-    if result[0]==1:
-        return {'Loan Status': 'Approved'}
-    else:
-        return {'Loan Status':'Not Approved'}
+def predict(data: LoanRequest):
+    input_data = [[
+        data.Gender,
+        data.Married,
+        data.Dependents,
+        data.Education,
+        data.Self_Employed,
+        data.ApplicantIncome,
+        data.CoapplicantIncome,
+        data.LoanAmount,
+        data.Loan_Amount_Term,
+        data.Credit_History,
+        data.Property_Area
+    ]]
+    
+    prediction = model.predict(input_data)[0]
+    
+    result = "Loan Approved" if prediction == 1 else "Loan Rejected"
+    return {"prediction": result}
+
